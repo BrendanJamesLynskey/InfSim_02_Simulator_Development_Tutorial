@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Inference Simulators 02 — Simulator Development: A Hands-On Tutorial</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&family=Geist+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #1c1815;
+            --bg-card: #231e1a;
+            --bg-code: #2b2520;
+            --text-primary: #efe8dc;
+            --text-secondary: #a2978b;
+            --accent: #aabd59;
+            --accent-dim: #aabd5944;
+            --accent-glow: #aabd5933;
+            --border: #3a322b;
+            --font-display: 'Bricolage Grotesque', sans-serif;
+            --font-mono: 'Geist Mono', 'Geist Mono', monospace;
+            --font-body: 'Instrument Sans', sans-serif;
+            --max-width: 900px;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 17px;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        /* ── Header ── */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hero > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .series-label {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+
+        .hero h1 .accent {
+            color: var(--accent);
+        }
+
+        .hero .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin-bottom: 2rem;
+        }
+
+        /* ── Tag Pills ── */
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+            white-space: nowrap;
+        }
+
+        /* ── Pipeline Flow Bar ── */
+        .pipeline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            max-width: var(--max-width);
+        }
+
+        .pipeline-step {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 0.3rem 0.7rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .pipeline-arrow {
+            color: var(--accent);
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        /* ── Slides ── */
+        .slide {
+            min-height: 100vh;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .slide-number {
+            font-family: var(--font-display);
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--accent-dim);
+            position: absolute;
+            top: 2rem;
+            right: 1.5rem;
+            line-height: 1;
+            user-select: none;
+        }
+
+        .slide h2 {
+            font-family: var(--font-display);
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            line-height: 1.25;
+        }
+
+        .slide h3 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .slide p {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .slide p strong {
+            color: var(--text-primary);
+        }
+
+        .slide ul, .slide ol {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        .slide li {
+            margin-bottom: 0.4rem;
+        }
+
+        .slide li strong {
+            color: var(--text-primary);
+        }
+
+        /* ── Code Blocks ── */
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 1.25rem 0;
+            overflow: hidden;
+        }
+
+        .code-header {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(170,189,89,0.08);
+            padding: 0.4rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .code-block pre {
+            margin: 0;
+            padding: 1rem;
+            overflow-x: auto;
+        }
+
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #dad1c5;
+        }
+
+        /* Syntax highlighting (manual) */
+        .kw { color: #de805a; }
+        .fn { color: #d7bbdf; }
+        .str { color: #bcdbd4; }
+        .cm { color: #a2978b; font-style: italic; }
+        .num { color: #97cdc6; }
+        .type { color: #e3b174; }
+        .dir { color: #de805a; }
+        .mac { color: #e3b174; }
+
+        /* ── Tables ── */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: var(--bg-code);
+            color: var(--accent);
+            font-weight: 600;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-display);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:nth-child(even) td {
+            background: rgba(35,30,26,0.5);
+        }
+
+        /* ── Diagrams ── */
+        .diagram-flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .diagram-box {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .diagram-box.accent {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(170,189,89,0.08);
+        }
+
+        .diagram-box.dim {
+            color: var(--text-secondary);
+            border-color: var(--border);
+        }
+
+        .diagram-arrow {
+            color: var(--accent);
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        /* Vertical flow diagrams */
+        .diagram-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .diagram-vertical .diagram-arrow {
+            font-size: 1.1rem;
+        }
+
+        /* Nested hierarchy diagram */
+        .hierarchy {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .hierarchy-level {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .hierarchy-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .hierarchy-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+
+        .hierarchy-item {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .hierarchy-item.accent {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(170,189,89,0.08);
+        }
+
+        /* Grid diagram */
+        .diagram-grid {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .diagram-grid.cols-2 {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .diagram-grid.cols-3 {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .diagram-panel {
+            padding: 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        .diagram-panel.accent-border {
+            border-left: 3px solid var(--accent);
+        }
+
+        .diagram-panel h4 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .diagram-panel p, .diagram-panel ul {
+            font-size: 0.85rem;
+        }
+
+        /* ── Callout Boxes ── */
+        .callout {
+            background: var(--bg-card);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.25rem;
+            margin: 1.25rem 0;
+        }
+
+        .callout p {
+            margin-bottom: 0;
+        }
+
+        .callout .callout-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.3rem;
+        }
+
+        /* ── Tier Visual ── */
+        .tier-visual {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .tier-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .tier-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            min-width: 90px;
+            text-align: right;
+        }
+
+        .tier-fill {
+            height: 32px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            padding: 0 0.75rem;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            white-space: nowrap;
+            transition: width 0.6s ease;
+        }
+
+        .tier-cost {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            min-width: 70px;
+        }
+
+        /* ── Contents list ── */
+        .contents-list {
+            list-style: none;
+            padding-left: 0;
+            counter-reset: contents;
+        }
+
+        .contents-list li {
+            counter-increment: contents;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .contents-list li:last-child {
+            border-bottom: none;
+        }
+
+        .contents-list li::before {
+            content: counter(contents, decimal-leading-zero);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            min-width: 2rem;
+        }
+
+        .contents-list a {
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .contents-list a:hover {
+            color: var(--accent);
+        }
+
+        /* ── Footer ── */
+        .footer {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 640px) {
+            .slide {
+                padding: 3rem 1rem;
+                min-height: auto;
+            }
+
+            .slide-number {
+                font-size: 3rem;
+                top: 1.5rem;
+                right: 1rem;
+            }
+
+            .slide h2 {
+                font-size: 1.5rem;
+            }
+
+            .diagram-grid.cols-2,
+            .diagram-grid.cols-3 {
+                grid-template-columns: 1fr;
+            }
+
+            .pipeline {
+                gap: 0.15rem;
+            }
+
+            .pipeline-step {
+                font-size: 0.6rem;
+                padding: 0.2rem 0.4rem;
+            }
+
+            .hero h1 {
+                font-size: 1.8rem;
+            }
+
+            table {
+                font-size: 0.78rem;
+            }
+
+            .tier-label {
+                min-width: 60px;
+                font-size: 0.65rem;
+            }
+
+            .tier-fill {
+                font-size: 0.6rem;
+                height: 26px;
+            }
+        }
+
+        /* ── Interactive controls (added for Local LLM series) ── */
+        .control-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin: 1.25rem 0;
+        }
+        .control-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .control-row label {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            min-width: 180px;
+        }
+        .control-row input[type="range"] {
+            flex: 1;
+            min-width: 160px;
+            accent-color: var(--accent);
+        }
+        .control-row input[type="number"],
+        .control-row select {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 4px;
+            padding: 0.3rem 0.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+        }
+        .control-row .val {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            min-width: 80px;
+            text-align: right;
+        }
+        .btn {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            padding: 0.4rem 0.9rem;
+            background: var(--accent-dim);
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .btn:hover { background: rgba(170,189,89,0.2); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn.secondary {
+            background: var(--bg-code);
+            color: var(--text-secondary);
+            border-color: var(--border);
+        }
+        .result-box {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 4px;
+            padding: 0.75rem 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            margin-top: 0.75rem;
+        }
+        .result-box .line-label { color: var(--text-secondary); }
+        .result-box .line-val   { color: var(--accent); font-weight: 600; }
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+        .metric {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.6rem 0.8rem;
+            text-align: center;
+        }
+        .metric .metric-label {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .metric .metric-value {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            color: var(--accent);
+            font-weight: 600;
+            margin-top: 0.2rem;
+        }
+
+        /* Canvas / SVG containers */
+        .canvas-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.25rem 0;
+            overflow-x: auto;
+        }
+        .canvas-wrap canvas,
+        .canvas-wrap svg {
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+        }
+
+        /* Small inline badge */
+        .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            vertical-align: middle;
+            margin-left: 0.3rem;
+        }
+        .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+        .badge.warn  { border-color: #e3b174; color: #e3b174; background: rgba(227,177,116,0.08); }
+        .badge.bad   { border-color: #de805a; color: #de805a; background: rgba(222,128,90,0.08); }
+
+
+        /* ── LLM Inference Simulators additions ── */
+        .canvas-wrap canvas { image-rendering: auto; display: block; width: 100%; height: auto; }
+        .canvas-wrap svg { max-width: 100%; height: auto; }
+        .ladder { display: grid; gap: 0.4rem; margin: 1.25rem 0; }
+        .ladder-row {
+            display: grid; grid-template-columns: 11rem 1fr 7.5rem; gap: 0.75rem; align-items: center;
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+            padding: 0.55rem 0.85rem; font-size: 0.88rem;
+        }
+        .ladder-row .rung { font-family: var(--font-display); font-weight: 600; color: var(--accent); }
+        .ladder-row .speed { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-secondary); text-align: right; }
+        .res-list { list-style: none; padding: 0; margin: 0.75rem 0; }
+        .res-list li { padding: 0.6rem 0; border-bottom: 1px solid var(--border); font-size: 0.92rem; }
+        .res-list li:last-child { border-bottom: none; }
+        .res-list .what { color: var(--text-secondary); display: block; font-size: 0.86rem; margin-top: 0.15rem; }
+        .res-list a { color: var(--accent); text-decoration: none; }
+        .res-list a:hover { text-decoration: underline; }
+        .qa { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; margin: 0.6rem 0; padding: 0.2rem 1rem; }
+        .qa summary { cursor: pointer; padding: 0.6rem 0; font-weight: 600; }
+        .qa p, .qa ul { margin-bottom: 0.75rem; font-size: 0.92rem; }
+        .sim-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0.4rem 1.25rem; }
+        .chart-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+        .chart-title { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.3rem; }
+        .slide a { color: var(--accent); }
+        @media (max-width: 640px) {
+            .ladder-row { grid-template-columns: 1fr; gap: 0.2rem; }
+            .ladder-row .speed { text-align: left; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="hero">
+    <div class="series-label">LLM Inference Simulators &mdash; Presentation 02</div>
+    <h1>Simulator Development &mdash; a <span class="accent">Hands-On</span> Tutorial</h1>
+    <p class="subtitle">Build a discrete-event simulator from an empty file: the event queue, simulated time, processes, resources and probes; then SimPy idioms, how to structure a simulator so it survives contact with architects, modelling buses, memories and pipelines, and making the simulator itself fast.</p>
+
+    <div class="tags">
+        <span class="tag">Discrete-event simulation</span>
+        <span class="tag">SimPy</span>
+        <span class="tag">Event queue</span>
+        <span class="tag">Resources</span>
+        <span class="tag">Determinism</span>
+        <span class="tag">Performance</span>
+    </div>
+
+    <div class="pipeline">
+        <span class="pipeline-step">Events</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Processes</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Resources</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Cost model</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Probes</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Tests</span>
+    </div>
+</header>
+
+<section class="slide" id="slide-00">
+    <div class="slide-number">00</div>
+    <h2>Topics We'll Cover</h2>
+    <ul class="contents-list">
+        <li><a href="#slide-01">Anatomy of a Discrete-Event Simulator</a></li>
+        <li><a href="#slide-02">Step 1 &mdash; A Kernel in 30 Lines</a></li>
+        <li><a href="#slide-03">Step 2 &mdash; A Queue, Checked Against Theory</a></li>
+        <li><a href="#slide-04">Interactive: Step Through the Event List</a></li>
+        <li><a href="#slide-05">Step 3 &mdash; Processes: Generators as Coroutines</a></li>
+        <li><a href="#slide-06">SimPy: The Whole Vocabulary on One Page</a></li>
+        <li><a href="#slide-07">Modelling Hardware in SimPy</a></li>
+        <li><a href="#slide-08">Shared Bandwidth: Hold the Link or Share It?</a></li>
+        <li><a href="#slide-09">Structuring a Simulator That Lasts</a></li>
+        <li><a href="#slide-10">Time, Ordering and Determinism Pitfalls</a></li>
+        <li><a href="#slide-11">Making the Simulator Fast</a></li>
+        <li><a href="#slide-12">Beyond Python: C++, Rust, SystemC</a></li>
+        <li><a href="#slide-13">Exercises</a></li>
+        <li><a href="#slide-14">What to Take Away</a></li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-01">
+    <div class="slide-number">01</div>
+    <h2>Anatomy of a Discrete-Event Simulator</h2>
+    <p>A discrete-event simulator (DES) models a system whose state only changes at <strong>instants</strong>: a request arrives, a transfer finishes, a batch completes. Between those instants nothing interesting happens, so the simulator jumps straight from one event to the next. This is <em>next-event time advance</em>, and it is why a DES can cover an hour of traffic in seconds.</p>
+
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>The four ingredients</h4>
+            <ul>
+                <li><strong>Clock</strong>: the current simulated time, <code>now</code>.</li>
+                <li><strong>State</strong>: queues, busy flags, counters: the model.</li>
+                <li><strong>Event list</strong>: a priority queue of future events ordered by time.</li>
+                <li><strong>Handlers</strong>: code that runs at an event, changes state and schedules more events.</li>
+            </ul>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>The main loop</h4>
+            <ol>
+                <li>Pop the earliest event.</li>
+                <li>Set <code>now</code> to its time.</li>
+                <li>Run its handler.</li>
+                <li>Repeat until the list is empty or a stop condition holds.</li>
+            </ol>
+            <p style="margin-top:0.5rem;">That is the entire engine. Everything else is the model.</p>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Versus fixed time-step</div>
+        <p>A fixed-step simulator advances by &Delta;t and checks everything each tick. It wastes work when little happens and blurs ordering when much happens within one tick. Clocked hardware is the exception: inside a synchronous block, cycle stepping is natural, which is exactly what RTL and cycle-accurate simulators do.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-02">
+    <div class="slide-number">02</div>
+    <h2>Step 1 &mdash; A Kernel in 30 Lines</h2>
+    <p>Write this once yourself before using a library. Every DES library, SimPy included, is a refinement of it.</p>
+    <div class="code-block">
+        <div class="code-header">des.py: a complete event-scheduling kernel</div>
+        <pre><code><span class="kw">import</span> heapq, itertools
+
+<span class="kw">class</span> <span class="type">Sim</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self):
+        self.now = <span class="num">0.0</span>
+        self._q = []                       <span class="cm"># heap of (time, seq, handler, args)</span>
+        self._seq = itertools.count()      <span class="cm"># tie-breaker: FIFO among equal times</span>
+
+    <span class="kw">def</span> <span class="fn">schedule</span>(self, delay, handler, *args):
+        <span class="kw">assert</span> delay &gt;= <span class="num">0</span>, <span class="str">"no time travel"</span>
+        heapq.heappush(self._q, (self.now + delay, next(self._seq), handler, args))
+
+    <span class="kw">def</span> <span class="fn">run</span>(self, until=float(<span class="str">"inf"</span>)):
+        <span class="kw">while</span> self._q <span class="kw">and</span> self._q[<span class="num">0</span>][<span class="num">0</span>] &lt;= until:
+            t, _, handler, args = heapq.heappop(self._q)
+            self.now = t
+            handler(*args)
+        self.now = min(until, self.now) <span class="kw">if</span> self._q <span class="kw">else</span> self.now</code></pre>
+    </div>
+    <ul>
+        <li><strong>The sequence number matters.</strong> Without it, two events at the same time are ordered by comparing handlers, which is an error in Python 3 and nondeterministic in other languages.</li>
+        <li><strong>A binary heap</strong> gives O(log n) insert and pop. Calendar queues and ladder queues can reach O(1) for large event lists, but the heap is almost always good enough.</li>
+        <li><strong>No cancellation yet.</strong> The usual trick is a "cancelled" flag that the loop skips (lazy deletion) rather than removing the entry from the heap.</li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-03">
+    <div class="slide-number">03</div>
+    <h2>Step 2 &mdash; A Queue, Checked Against Theory</h2>
+    <p>The first model to build on any new kernel is the single-server queue, because queueing theory gives you its exact answer. With Poisson arrivals (rate &lambda;) and exponential service (rate &mu;), the M/M/1 mean time in system is <code>W = 1 / (&mu; &minus; &lambda;)</code>.</p>
+    <div class="code-block">
+        <div class="code-header">mm1.py: event-scheduling style</div>
+        <pre><code><span class="kw">import</span> random
+sim, rng = Sim(), random.Random(<span class="num">42</span>)
+LAM, MU = <span class="num">0.8</span>, <span class="num">1.0</span>
+queue, busy, times = [], [<span class="kw">False</span>], []
+
+<span class="kw">def</span> <span class="fn">arrive</span>():
+    queue.append(sim.now)
+    sim.schedule(rng.expovariate(LAM), arrive)
+    <span class="kw">if not</span> busy[<span class="num">0</span>]: start()
+
+<span class="kw">def</span> <span class="fn">start</span>():
+    busy[<span class="num">0</span>] = <span class="kw">True</span>
+    sim.schedule(rng.expovariate(MU), depart, queue.pop(<span class="num">0</span>))
+
+<span class="kw">def</span> <span class="fn">depart</span>(t_arrived):
+    times.append(sim.now - t_arrived)
+    busy[<span class="num">0</span>] = <span class="kw">False</span>
+    <span class="kw">if</span> queue: start()
+
+sim.schedule(<span class="num">0</span>, arrive); sim.run(until=<span class="num">200_000</span>)
+print(sum(times) / len(times), <span class="str">"vs theory"</span>, <span class="num">1</span> / (MU - LAM))   <span class="cm"># ~5.0 vs 5.0</span></code></pre>
+    </div>
+    <div class="callout">
+        <div class="callout-label">Why this is step 2, not an afterthought</div>
+        <p>An analytic check catches kernel bugs (ordering, off-by-one in time) that no amount of eyeballing will. The simulator in this series keeps the same habit: its KV link is tested against the M/D/1 Pollaczek&ndash;Khinchine formula on every CI run.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-04">
+    <div class="slide-number">04</div>
+    <h2>Interactive: Step Through the Event List</h2>
+    <p>A two-stage pipeline: jobs arrive, are <span style="color:#aabd59">computed</span> on one unit, then <span style="color:#e3b174">transferred</span> over one link. Step through and watch the clock jump between event times, the event list re-order, and queues form when the link is slower than the compute.</p>
+
+    <div class="control-panel">
+        <div class="control-row">
+            <label for="es-comp">Compute time (mean)</label>
+            <input type="range" id="es-comp" min="0.2" max="2" step="0.1" value="0.8">
+            <span class="val" id="es-comp-val">0.8</span>
+        </div>
+        <div class="control-row">
+            <label for="es-link">Transfer time (mean)</label>
+            <input type="range" id="es-link" min="0.2" max="2" step="0.1" value="1.1">
+            <span class="val" id="es-link-val">1.1</span>
+        </div>
+        <div class="control-row">
+            <label for="es-gap">Mean inter-arrival</label>
+            <input type="range" id="es-gap" min="0.5" max="3" step="0.1" value="1.2">
+            <span class="val" id="es-gap-val">1.2</span>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.5rem;">
+            <button class="btn" id="es-step">Step one event</button>
+            <button class="btn" id="es-run10">Step 10</button>
+            <button class="btn secondary" id="es-reset">Reset</button>
+        </div>
+        <div class="chart-pair" style="margin-top:0.75rem;">
+            <div>
+                <div class="chart-title">event list (next first)</div>
+                <div class="result-box" id="es-list" style="min-height:9rem; white-space:pre;"></div>
+            </div>
+            <div>
+                <div class="chart-title">state</div>
+                <div class="result-box" id="es-state" style="min-height:9rem; white-space:pre;"></div>
+            </div>
+        </div>
+        <div class="canvas-wrap" style="padding:0.5rem;"><canvas id="es-canvas" width="840" height="170"></canvas></div>
+    </div>
+    <script>
+    (function(){
+        let st;
+        function rng(seed){ return function(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+        const P = id => +document.getElementById(id).value;
+        function reset(){
+            st = { now: 0, seq: 0, q: [], cq: [], lq: [], cBusy: null, lBusy: null, nextId: 0, spans: [], log: '', r: rng(7) };
+            sched(0, 'arrive', null);
+            draw();
+        }
+        const exp = m => -Math.log(1 - st.r()) * m;
+        function sched(dt, kind, job){ st.q.push({ t: st.now + dt, s: st.seq++, kind, job }); st.q.sort((a,b) => a.t - b.t || a.s - b.s); }
+        function step(){
+            const e = st.q.shift(); if (!e) return;
+            st.now = e.t;
+            if (e.kind === 'arrive') {
+                const j = { id: st.nextId++, arr: st.now }; st.cq.push(j);
+                if (st.nextId < 40) sched(exp(P('es-gap')), 'arrive', null);
+                st.log = `t=${st.now.toFixed(2)}  job ${j.id} arrives`;
+                tryCompute();
+            } else if (e.kind === 'compDone') {
+                st.spans.push({ lane: 0, a: e.job.cs, b: st.now, id: e.job.id }); st.cBusy = null;
+                st.lq.push(e.job); st.log = `t=${st.now.toFixed(2)}  job ${e.job.id} compute done`;
+                tryCompute(); tryLink();
+            } else {
+                st.spans.push({ lane: 1, a: e.job.ls, b: st.now, id: e.job.id }); st.lBusy = null;
+                st.log = `t=${st.now.toFixed(2)}  job ${e.job.id} leaves (in system ${(st.now - e.job.arr).toFixed(2)})`;
+                tryLink();
+            }
+            draw();
+        }
+        function tryCompute(){ if (!st.cBusy && st.cq.length){ const j = st.cq.shift(); j.cs = st.now; st.cBusy = j; sched(exp(P('es-comp')), 'compDone', j); } }
+        function tryLink(){ if (!st.lBusy && st.lq.length){ const j = st.lq.shift(); j.ls = st.now; st.lBusy = j; sched(exp(P('es-link')), 'linkDone', j); } }
+        function draw(){
+            document.getElementById('es-list').textContent = st.q.map(e => `t=${e.t.toFixed(2)}  ${e.kind}${e.job ? ' j' + e.job.id : ''}`).join('\n') || '(empty)';
+            document.getElementById('es-state').textContent =
+                `now          = ${st.now.toFixed(2)}\ncompute      = ${st.cBusy ? 'busy j' + st.cBusy.id : 'idle'}\ncompute queue= [${st.cq.map(j => j.id).join(', ')}]\nlink         = ${st.lBusy ? 'busy j' + st.lBusy.id : 'idle'}\nlink queue   = [${st.lq.map(j => j.id).join(', ')}]\n\n${st.log}`;
+            const c = document.getElementById('es-canvas'), g = c.getContext('2d');
+            g.clearRect(0, 0, c.width, c.height);
+            const T0 = Math.max(0, st.now - 14), sx = t => 90 + (t - T0) * 52;
+            g.font = '12px "Geist Mono", monospace'; g.fillStyle = '#a2978b';
+            g.fillText('compute', 8, 52); g.fillText('link', 8, 112);
+            const cols = ['#aabd59', '#e3b174'];
+            const all = st.spans.slice();
+            if (st.cBusy) all.push({ lane: 0, a: st.cBusy.cs, b: st.now, id: st.cBusy.id, open: true });
+            if (st.lBusy) all.push({ lane: 1, a: st.lBusy.ls, b: st.now, id: st.lBusy.id, open: true });
+            all.forEach(s => {
+                const x0 = Math.max(90, sx(s.a)), x1 = sx(s.b); if (x1 < 90) return;
+                g.globalAlpha = s.open ? 0.35 : 0.75; g.fillStyle = cols[s.lane];
+                g.fillRect(x0, 30 + s.lane * 60, Math.max(1, x1 - x0 - 1), 34);
+                g.globalAlpha = 1; g.fillStyle = '#1c1815';
+                if (x1 - x0 > 18) g.fillText('j' + s.id, x0 + 3, 52 + s.lane * 60);
+            });
+            g.strokeStyle = '#de805a'; g.beginPath(); g.moveTo(sx(st.now), 20); g.lineTo(sx(st.now), 150); g.stroke();
+            g.fillStyle = '#de805a'; g.fillText('now', sx(st.now) - 12, 165);
+        }
+        document.getElementById('es-step').onclick = step;
+        document.getElementById('es-run10').onclick = () => { for (let i = 0; i < 10; i++) step(); };
+        document.getElementById('es-reset').onclick = reset;
+        ['es-comp','es-link','es-gap'].forEach(id => document.getElementById(id).addEventListener('input', e => {
+            document.getElementById(id + '-val').textContent = e.target.value; }));
+        reset();
+    })();
+    </script>
+    <p style="font-size: 0.85rem;">The kernel underneath is exactly the 30-line one from slide 02: a sorted list of (time, sequence, kind, job). Make the transfer slower than the compute and the link queue grows without bound: the link is the hot-spot.</p>
+</section>
+
+<section class="slide" id="slide-05">
+    <div class="slide-number">05</div>
+    <h2>Step 3 &mdash; Processes: Generators as Coroutines</h2>
+    <p>Event-scheduling code scatters one job's life across several handlers (<code>arrive</code>, <code>start</code>, <code>depart</code>). The <strong>process-interaction</strong> worldview writes each entity's life as one sequential function that <em>suspends</em> whenever it has to wait. Python generators make this natural: <code>yield</code> hands an event to the kernel, and the kernel resumes the generator when that event fires.</p>
+
+    <div class="diagram-grid cols-2">
+        <div class="code-block" style="margin:0;">
+            <div class="code-header">The same M/M/1, in SimPy</div>
+            <pre><code><span class="kw">import</span> simpy, random
+rng = random.Random(<span class="num">42</span>)
+env = simpy.Environment()
+server = simpy.Resource(env, capacity=<span class="num">1</span>)
+times = []
+
+<span class="kw">def</span> <span class="fn">job</span>(env):
+    t0 = env.now
+    <span class="kw">with</span> server.request() <span class="kw">as</span> req:
+        <span class="kw">yield</span> req                     <span class="cm"># wait for the server</span>
+        <span class="kw">yield</span> env.timeout(rng.expovariate(<span class="num">1.0</span>))
+    times.append(env.now - t0)
+
+<span class="kw">def</span> <span class="fn">source</span>(env):
+    <span class="kw">while True</span>:
+        <span class="kw">yield</span> env.timeout(rng.expovariate(<span class="num">0.8</span>))
+        env.process(job(env))
+
+env.process(source(env))
+env.run(until=<span class="num">200_000</span>)</code></pre>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>What changed</h4>
+            <ul>
+                <li>A job's life is one readable function.</li>
+                <li>The queue is implicit, inside <code>Resource</code>.</li>
+                <li>Waiting is <code>yield</code>, and the kernel is the scheduler.</li>
+                <li>The <code>with</code> block releases the server even on an exception or interrupt.</li>
+            </ul>
+            <h4 style="margin-top:0.75rem;">The kernel underneath</h4>
+            <p>When a process yields an event, SimPy appends the process's resume callback to that event. When the event is triggered, it goes into the heap; when popped, its callbacks run and the generator continues with <code>send()</code>. It is still the 30-line loop.</p>
+        </div>
+    </div>
+</section>
+
+<section class="slide" id="slide-06">
+    <div class="slide-number">06</div>
+    <h2>SimPy: The Whole Vocabulary on One Page</h2>
+    <p>SimPy (v4, pure Python, MIT-licensed) is small enough to learn in an afternoon. This table is most of it.</p>
+    <div class="table-wrap">
+    <table>
+        <tr><th>Concept</th><th>API</th><th>Hardware use</th></tr>
+        <tr><td>Environment and clock</td><td><code>simpy.Environment()</code>, <code>env.now</code>, <code>env.run(until=t | event)</code></td><td>One per simulation; time units are yours (pick seconds or ns and stick to it)</td></tr>
+        <tr><td>Process</td><td><code>env.process(gen)</code>, which is itself an event that fires when the generator returns</td><td>A compute engine, DMA, scheduler loop, traffic source</td></tr>
+        <tr><td>Delay</td><td><code>yield env.timeout(dt)</code></td><td>Compute time from the cost model, wire latency</td></tr>
+        <tr><td>Raw event</td><td><code>ev = env.event()</code>; <code>ev.succeed(value)</code></td><td>Interrupt lines, doorbells, "data ready" flags</td></tr>
+        <tr><td>Conditions</td><td><code>yield a &amp; b</code>, <code>yield a | b</code> (AllOf / AnyOf)</td><td>Wait for all DMA channels; wait for data or timeout</td></tr>
+        <tr><td>Resource</td><td><code>Resource</code>, <code>PriorityResource</code>, <code>PreemptiveResource</code></td><td>Buses, links, functional units, arbiters with priority</td></tr>
+        <tr><td>Container</td><td><code>Container(capacity, init)</code>, <code>put(n)</code>, <code>get(n)</code></td><td>Credits, buffer occupancy, memory capacity in bytes</td></tr>
+        <tr><td>Store</td><td><code>Store(capacity)</code>, <code>FilterStore</code>, <code>PriorityStore</code></td><td>FIFOs with back-pressure, mailboxes, packet queues</td></tr>
+        <tr><td>Interrupt</td><td><code>proc.interrupt(cause)</code> raises <code>simpy.Interrupt</code> inside the process</td><td>Pre-emption, reset, power-gating, error injection</td></tr>
+        <tr><td>Real time</td><td><code>simpy.rt.RealtimeEnvironment</code></td><td>Hardware-in-the-loop demos (rarely needed)</td></tr>
+    </table>
+    </div>
+    <div class="callout">
+        <div class="callout-label">What SimPy deliberately lacks</div>
+        <p>No statistics, no tracing, no plotting, no configuration system. That is a feature: you write the probes and metrics that your architecture needs, which is most of the engineering in a real simulator (deck 06).</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-07">
+    <div class="slide-number">07</div>
+    <h2>Modelling Hardware in SimPy</h2>
+    <p>Most SoC building blocks map onto three primitives. A bounded FIFO between a producer and a consumer shows the most important one: <strong>back-pressure</strong>.</p>
+    <div class="code-block">
+        <div class="code-header">A DMA engine feeding a compute unit through a 4-deep FIFO</div>
+        <pre><code>fifo = simpy.Store(env, capacity=<span class="num">4</span>)            <span class="cm"># put() blocks when full: back-pressure</span>
+hbm  = simpy.Resource(env, capacity=<span class="num">2</span>)         <span class="cm"># two memory channels</span>
+
+<span class="kw">def</span> <span class="fn">dma</span>(env, tiles):
+    <span class="kw">for</span> tile <span class="kw">in</span> tiles:
+        <span class="kw">with</span> hbm.request() <span class="kw">as</span> ch:
+            <span class="kw">yield</span> ch
+            <span class="kw">yield</span> env.timeout(LAT + tile.nbytes / CH_BW)   <span class="cm"># cost model, not magic numbers</span>
+        <span class="kw">yield</span> fifo.put(tile)                         <span class="cm"># stalls here if compute falls behind</span>
+
+<span class="kw">def</span> <span class="fn">compute</span>(env, stats):
+    <span class="kw">while True</span>:
+        tile = <span class="kw">yield</span> fifo.get()                      <span class="cm"># stalls here if DMA falls behind</span>
+        t0 = env.now
+        <span class="kw">yield</span> env.timeout(tile.flops / PEAK)
+        stats.busy += env.now - t0                   <span class="cm"># utilisation probe</span></code></pre>
+    </div>
+    <div class="diagram-grid cols-3">
+        <div class="diagram-panel accent-border"><h4>Resource</h4><p>Anything with N identical servers that a job holds for a while: links, channels, engines, ports. Use <code>PriorityResource</code> to model an arbiter.</p></div>
+        <div class="diagram-panel accent-border"><h4>Store</h4><p>Anything that holds <em>items</em>: FIFOs, queues, packet buffers. A finite <code>capacity</code> gives you back-pressure for free.</p></div>
+        <div class="diagram-panel accent-border"><h4>Container</h4><p>Anything that holds an <em>amount</em>: credits, bytes of SRAM, KV-cache tokens. Getting more than is there blocks until someone puts some back.</p></div>
+    </div>
+</section>
+
+<section class="slide" id="slide-08">
+    <div class="slide-number">08</div>
+    <h2>Shared Bandwidth: Hold the Link or Share It?</h2>
+    <p>The most common modelling decision in a data-movement simulator, and the one most often made by accident. Two transfers want the same link at once. What happens?</p>
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>FCFS hold (a <code>Resource</code>)</h4>
+            <p>The first transfer owns the whole link until it finishes; the second waits, then runs at full rate. Simple and cheap: one event per transfer. Right for packet-switched links with large messages and for DMA engines that serialise.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Processor sharing (fair share)</h4>
+            <p>Both proceed at half rate. Every arrival or departure changes every active transfer's finish time, so you must re-compute and re-schedule (or use a "fluid" model). Closer to many-flow networks and to NoCs with fine-grained interleaving.</p>
+        </div>
+    </div>
+    <div class="table-wrap">
+    <table>
+        <tr><th>Two 10 ms transfers start together</th><th>Transfer A done</th><th>Transfer B done</th><th>Mean</th></tr>
+        <tr><td>FCFS hold</td><td>10 ms</td><td>20 ms</td><td>15 ms</td></tr>
+        <tr><td>Processor sharing</td><td>20 ms</td><td>20 ms</td><td>20 ms</td></tr>
+    </table>
+    </div>
+    <p>Same throughput, same utilisation, different latency distribution. If your metric is a tail latency, this choice can change the answer. Write it down in the model's specification and test it.</p>
+</section>
+
+<section class="slide" id="slide-09">
+    <div class="slide-number">09</div>
+    <h2>Structuring a Simulator That Lasts</h2>
+    <p>Simulators that architects actually use share one structure: <strong>separate the things that change at different rates</strong>.</p>
+    <div class="hierarchy">
+        <div class="hierarchy-level"><div class="hierarchy-label">Workload</div><div class="hierarchy-items"><span class="hierarchy-item">request streams</span><span class="hierarchy-item">operator graphs</span><span class="hierarchy-item">replayed traces</span></div></div>
+        <div class="hierarchy-level"><div class="hierarchy-label">Architecture config</div><div class="hierarchy-items"><span class="hierarchy-item">counts, sizes, bandwidths</span><span class="hierarchy-item">topology</span><span class="hierarchy-item">plain data (YAML or dataclasses)</span></div></div>
+        <div class="hierarchy-level"><div class="hierarchy-label">Cost models</div><div class="hierarchy-items"><span class="hierarchy-item accent">how long does X take?</span><span class="hierarchy-item">roofline, table, ML regressor, RTL-calibrated</span></div></div>
+        <div class="hierarchy-level"><div class="hierarchy-label">Engine &amp; behaviour</div><div class="hierarchy-items"><span class="hierarchy-item">schedulers, arbiters, batching</span><span class="hierarchy-item">event kernel</span></div></div>
+        <div class="hierarchy-level"><div class="hierarchy-label">Probes &amp; metrics</div><div class="hierarchy-items"><span class="hierarchy-item">counters, traces</span><span class="hierarchy-item">reports, dashboards</span></div></div>
+    </div>
+    <ul>
+        <li><strong>The cost model is a plug-in.</strong> The engine asks "how long does this batch take?" and never knows whether the answer came from a formula, a lookup table measured on RTL, or a regression. This is how the model improves over the project without rewrites. (Vidur does exactly this with profiled operator tables.)</li>
+        <li><strong>Configuration is data, not code.</strong> Every run should be reproducible from one config file plus a seed. Stamp outputs with the config hash and the git SHA.</li>
+        <li><strong>Probes are passive.</strong> Measuring must never change behaviour. Keep metric code out of scheduling decisions so you can switch tracing off for speed.</li>
+        <li><strong>One clock unit everywhere.</strong> Choose seconds (floats) or integer picoseconds and convert at the edges.</li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-10">
+    <div class="slide-number">10</div>
+    <h2>Time, Ordering and Determinism Pitfalls</h2>
+    <div class="table-wrap">
+    <table>
+        <tr><th>Pitfall</th><th>Symptom</th><th>Cure</th></tr>
+        <tr><td>Simultaneous events</td><td>Results change when unrelated code is reordered</td><td>Deterministic tie-break (sequence number, explicit priorities); never rely on hash or set order</td></tr>
+        <tr><td>Floating-point time</td><td>Events at "the same" time drift apart after millions of additions; <code>0.1+0.2 != 0.3</code></td><td>Integer time base (ps or cycles) for clocked models; or compare with tolerance</td></tr>
+        <tr><td>Zero-delay loops</td><td>Simulator hangs with the clock frozen</td><td>Assert progress; cap events per timestamp; watchdog on wall-clock time</td></tr>
+        <tr><td>Shared RNG</td><td>Adding one random draw in component A changes every result in component B</td><td>One RNG stream per component, seeded from a master seed</td></tr>
+        <tr><td>Warm-up bias</td><td>Latencies look great because the system started empty</td><td>Discard the warm-up period; check stationarity (deck 06)</td></tr>
+        <tr><td>End-of-run bias</td><td>Long requests still running at the end are silently dropped</td><td>Run to drain, or measure only requests that arrived in the window</td></tr>
+        <tr><td>Hidden infinite capacity</td><td>Queues never fill, so there is no back-pressure anywhere</td><td>Give every buffer a capacity; report its high-water mark</td></tr>
+    </table>
+    </div>
+    <div class="callout">
+        <div class="callout-label">Determinism is a feature</div>
+        <p>Same config + same seed must give bit-identical output. It makes regressions diagnosable, lets CI compare against golden results, and lets you replay one interesting request. The simulator in this series has a test that asserts it.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-11">
+    <div class="slide-number">11</div>
+    <h2>Making the Simulator Fast</h2>
+    <p>Simulator speed is an architecture-team productivity metric: a sweep of 500 configurations at 10 minutes each is a three-day wait. In order of payoff (deck 08 takes each of these further, with measurements):</p>
+    <ol>
+        <li><strong>Measure first.</strong> <code>cProfile</code> or <code>py-spy</code> for where the time goes; count events per simulated second. Most slow simulators are slow because of probes, logging or per-event object allocation, not the kernel.</li>
+        <li><strong>Simulate fewer events.</strong> Model a whole batch step as one event, not one per token or per layer. Replace a detailed sub-model with an analytic one where it does not affect the answer (a fluid approximation for bulk transfers, say).</li>
+        <li><strong>Run sweeps in parallel.</strong> Independent configurations are embarrassingly parallel: <code>multiprocessing</code>, a job array, or Jenkins agents. This usually beats any single-run optimisation.</li>
+        <li><strong>Try a faster interpreter</strong> such as PyPy, which suits generator-heavy SimPy code; measure, as gains vary.</li>
+        <li><strong>Move the hot path to a compiled language.</strong> Keep the Python API and configuration, and push the event loop and cost models into C++ or Rust (pybind11, PyO3/maturin).</li>
+        <li><strong>Parallel discrete-event simulation (PDES)</strong> is the last resort: conservative (Chandy&ndash;Misra&ndash;Bryant, needs lookahead) or optimistic (Time Warp, needs rollback). Powerful, but it imposes structure on the whole model; SST and parallel SystemC kernels go this way.</li>
+    </ol>
+</section>
+
+<section class="slide" id="slide-12">
+    <div class="slide-number">12</div>
+    <h2>Beyond Python: C++, Rust, SystemC</h2>
+    <div class="diagram-grid cols-3">
+        <div class="diagram-panel accent-border">
+            <h4>SystemC / TLM-2.0</h4>
+            <p>The IEEE 1666 C++ library used for virtual platforms. TLM-2.0 offers <em>loosely-timed</em> modelling (blocking transport, temporal decoupling with a time quantum, fast enough to boot software) and <em>approximately-timed</em> modelling (phased non-blocking transport for contention). It is the standard interchange format for IP models.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>C++ simulators</h4>
+            <p>gem5 (CPU and memory systems), SST (Sandia; parallel, component-based), ASTRA-sim (distributed ML), Accel-Sim (GPUs). When Python runs out of speed, this is where the field lives, and their source code is the best textbook on structuring large simulators.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Rust</h4>
+            <p>Memory safety without a garbage collector makes Rust attractive for simulation kernels: a <code>BinaryHeap</code> event list, components as structs, and PyO3 to expose it to Python so the configuration and analysis stay in notebooks. Async-based Rust DES frameworks (for example NeXosim) are emerging too.</p>
+        </div>
+    </div>
+    <div class="code-block">
+        <div class="code-header">The Rust kernel is the Python kernel with types</div>
+        <pre><code><span class="kw">use</span> std::{cmp::Reverse, collections::BinaryHeap};
+
+<span class="dir">#[derive(PartialEq, Eq, PartialOrd, Ord)]</span>
+<span class="kw">struct</span> <span class="type">Ev</span> { t_ps: <span class="type">u64</span>, seq: <span class="type">u64</span>, kind: <span class="type">Kind</span> }   <span class="cm">// integer picoseconds: exact ordering</span>
+
+<span class="kw">fn</span> <span class="fn">run</span>(q: &amp;<span class="kw">mut</span> <span class="type">BinaryHeap</span>&lt;<span class="type">Reverse</span>&lt;<span class="type">Ev</span>&gt;&gt;, model: &amp;<span class="kw">mut</span> <span class="type">Model</span>) {
+    <span class="kw">while let</span> <span class="type">Some</span>(<span class="type">Reverse</span>(ev)) = q.pop() {
+        model.now = ev.t_ps;
+        model.handle(ev.kind, q);          <span class="cm">// handlers push follow-on events</span>
+    }
+}</code></pre>
+    </div>
+</section>
+
+<section class="slide" id="slide-13">
+    <div class="slide-number">13</div>
+    <h2>Exercises</h2>
+    <p>Each takes an evening and builds a skill this series relies on. The <a href="https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim">Disaggregated_Inference_Sim</a> repo is the worked solution for the last three.</p>
+    <ol>
+        <li>Type in the 30-line kernel. Add event cancellation with lazy deletion. Reproduce the M/M/1 result and plot simulated against theoretical <code>W</code> for &rho; from 0.1 to 0.95. Watch the variance grow near saturation.</li>
+        <li>Rewrite the M/M/1 in SimPy and time both versions. How many events per second does each manage?</li>
+        <li>Model the DMA &rarr; FIFO &rarr; compute pipeline of slide 07. Sweep FIFO depth from 1 to 16 and find where throughput stops improving.</li>
+        <li>Implement the link both ways (FCFS hold and processor sharing). Show that the mean throughput matches and the latency distributions differ.</li>
+        <li>Add a probe layer: per-resource utilisation, time-weighted queue length, and a Chrome-trace exporter. Open the trace in Perfetto.</li>
+        <li>Put a roofline cost model behind an interface, then replace it with a lookup table without touching the engine.</li>
+        <li>Write a test that checks Little's law (<code>L = &lambda;W</code>) on your model, and wire it into CI.</li>
+        <li>Attach an energy model: static watts &times; time plus energy per operation and per byte moved. Report joules per job, and add a power cap that stretches compute-bound work (deck 07).</li>
+    </ol>
+</section>
+
+<section class="slide" id="slide-14">
+    <div class="slide-number">14</div>
+    <h2>What to Take Away</h2>
+    <ul>
+        <li><strong>A DES is a priority queue and a loop.</strong> Write one by hand once; then every library is familiar.</li>
+        <li><strong>Validate the kernel against queueing theory</strong> before trusting it with anything that has no closed form.</li>
+        <li><strong>SimPy's process-interaction style</strong> (generators, Resource, Store, Container) maps naturally onto engines, links, FIFOs and capacity.</li>
+        <li><strong>Separate workload, config, cost model, engine and probes.</strong> The cost model will be replaced several times in a project; make that cheap.</li>
+        <li><strong>Determinism, integer time and per-component RNG streams</strong> save weeks of debugging.</li>
+        <li><strong>Speed comes from fewer events and parallel sweeps first</strong>, compiled kernels second, PDES last.</li>
+    </ul>
+    <div class="callout">
+        <div class="callout-label">Next</div>
+        <p>Deck 03 covers the physics of the workload we want to simulate: prefill, decode, the roofline and the KV cache.</p>
+    </div>
+</section>
+
+<!-- ════════════════════════════════════ Footer ════════════════════════════════════ -->
+<footer class="footer">
+    <p>Part of the <a href="https://github.com/BrendanJamesLynskey/LLM_Hub_Inference_Simulators">LLM Inference Simulators series</a> &middot; code: <a href="https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim">Disaggregated_Inference_Sim</a></p>
+    <p style="margin-top: 0.5rem; font-size: 0.8rem;"><a href="https://brendanjameslynskey.github.io/InfSim_01_Why_Simulate/">&larr; 01 Why Simulate? From Spreadsheets to RTL</a> &nbsp;&middot;&nbsp; <a href="https://brendanjameslynskey.github.io/InfSim_03_LLM_Inference_Workloads/">03 What You Are Simulating: LLM Inference Workloads &rarr;</a></p>
+    <p style="margin-top: 0.5rem; font-size: 0.8rem;"><a href="https://github.com/BrendanJamesLynskey/LLMs#hardware--inference">Back to the LLMs hub</a></p>
+</footer>
+
+<script>
+    // Smooth scroll for TOC links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    // Subtle fade-in on scroll
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.slide').forEach(slide => {
+        slide.style.opacity = '0';
+        slide.style.transform = 'translateY(30px)';
+        slide.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(slide);
+    });
+</script>
+
+</body>
+</html>
